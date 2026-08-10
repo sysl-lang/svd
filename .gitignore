@@ -1,0 +1,41 @@
+*.class
+*.log
+
+# sbt specific
+.cache/
+.history/
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+*~
+.directory
+.idea/
+.bsp/
+
+# The prebuilt standard module, from `sysl build-lib lib --core`. Built rather than committed: half
+# of it is object code for one machine, and it takes under a second to make.
+.sysl/
+
+# The rendered documentation site. `docs/` holds the source; this is what juicer makes of it.
+_site/
+docs/public/
+
+# A scratch project at the repo root, for trying something out without committing it. A directory
+# rather than a single file, so that trying something out can take a module or two and its own
+# `package.hocon`. The leading slash is what keeps this to the one at the top: `lib/sysl/test.sysl`,
+# a guide's own `test.sysl` and a package's `tests.sysl` are ordinary source and stay tracked.
+/test/
+
+# Release staging — the prefix and the tarball are built at release time and published,
+# never committed. Removing them by hand after every release was the alternative.
+/stage/
+/sysl-*-darwin-arm64.tar.gz
