@@ -118,7 +118,13 @@ object Constants:
             out += s"const ${r.name}_${f.name}_SHIFT: $ty = ${f.bitOffset}"
             for e <- f.enumeratedValues do
               if opts.descriptions == Descriptions.All then for d <- e.description do out ++= comment(d)
-              out += s"const ${r.name}_${f.name}_${e.name}: $ty = ${e.value}"
+              // Upper-cased, unlike every other name here, which is kept exactly as the SVD spells it.
+              // A vendor writes these in whatever case it likes -- Raspberry Pi's GPIO functions are
+              // `sio_0` and `jtag_tck` -- and a constant reading GPIO0_CTRL_FUNCSEL_sio_0 next to
+              // GPIO0_CTRL_FUNCSEL_MASK looks like a mistake rather than a choice. Checked against the
+              // whole RP2350 before this was done: no two enumerated values in any one module differ
+              // only in case, so nothing collides.
+              out += s"const ${r.name}_${f.name}_${e.name.toUpperCase}: $ty = ${e.value}"
 
     out.result().mkString("\n").replaceAll("\n{3,}", "\n\n").trim + "\n"
 

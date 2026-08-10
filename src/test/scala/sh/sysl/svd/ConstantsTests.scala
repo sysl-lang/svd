@@ -41,6 +41,7 @@ class ConstantsTests extends AnyFreeSpec with Matchers:
         |const CTRL_PARITY_SHIFT: u32 = 2
         |const CTRL_PARITY_NONE: u32 = 0
         |const CTRL_PARITY_EVEN: u32 = 1
+        |const CTRL_PARITY_ODD_PARITY: u32 = 2
         |
         |const DATA_OFFSET: u32 = 0x00000004
         |const DATA_BYTE_MASK: u32 = 0x000000ff
@@ -109,6 +110,15 @@ class ConstantsTests extends AnyFreeSpec with Matchers:
 
   "a field that fills its register gets the whole mask" in {
     Constants.module(tiny, tiny.byName("WIDE"), opts) should include("const ALL_EVERY_MASK: u32 = 0xffffffff")
+  }
+
+  "an enumerated value's name is upper-cased, alone among the names here" in {
+    // A vendor writes these in whatever case it likes -- the RP2350's GPIO functions are `sio_0` and
+    // `jtag_tck` -- and a lower-case tail next to CTRL_PARITY_MASK reads as a slip rather than a
+    // choice. Everything else keeps the datasheet's own spelling.
+    val text = Constants.module(tiny, tiny.byName("UART0"), opts)
+    text should include("const CTRL_PARITY_ODD_PARITY: u32 = 2")
+    text should not include "odd_parity"
   }
 
   "the integer type comes from the device's own register width" in {

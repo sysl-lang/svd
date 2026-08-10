@@ -40,6 +40,10 @@
                                     <name>EVEN</name>
                                     <value>1</value>
                                 </enumeratedValue>
+                                <enumeratedValue>
+                                    <name>odd_parity</name>
+                                    <value>2</value>
+                                </enumeratedValue>
                             </enumeratedValues>
                         </field>
                     </fields>

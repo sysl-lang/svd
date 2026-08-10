@@ -84,7 +84,8 @@ class ParserTests extends AnyFreeSpec with Matchers:
 
   "enumerated values are read, with their prose" in {
     val parity = tiny.byName("UART0").registers.head.fields.find(_.name == "PARITY").get
-    parity.enumeratedValues.map(e => (e.name, e.value)) shouldBe Seq(("NONE", 0L), ("EVEN", 1L))
+    // The parser keeps the vendor's own spelling; upper-casing is the emitter's decision.
+    parity.enumeratedValues.map(e => (e.name, e.value)) shouldBe Seq(("NONE", 0L), ("EVEN", 1L), ("odd_parity", 2L))
     parity.enumeratedValues.head.description shouldBe Some("No parity bit")
   }
 
