@@ -53,6 +53,7 @@ The integer type comes from the device's own `<width>`, so a 32-bit chip gets `u
 | `--absolute` | emit each register's absolute address as well as its offset |
 | `--derived` | `expand` (the default) or `base-only` — see below |
 | `--include`, `--exclude` | which peripherals to emit, by SVD name |
+| `--patch` | a file of corrections to apply to the SVD first — see below |
 | `--dry-run` | report what would be written, and write nothing |
 
 `svd survey <file>` reports what is in an SVD without emitting anything, which is the quickest way to
@@ -83,6 +84,65 @@ its parent's registers would drop them.
 `CCMR1_Output` and `CCMR1_Input` at one offset, the input reading of the word naming the output one
 with `<alternateRegister>`. Each is a complete register, so both are emitted with their own fields, and
 the one naming the other carries a comment saying so.
+
+## Correcting a vendor's SVD
+
+Vendors' SVDs are wrong in places — a bit left out, a field two bits too narrow, a second core's block
+of registers missing — and the wrong value is the one every program compiled against the generated map
+believes. Editing the generated files is undone by the next regeneration; editing the vendor's XML
+hides the change in a file nobody diffs. So a correction goes in a **patch file**, in HOCON, applied
+to the parsed SVD before anything is emitted:
+
+```
+svd constants STM32H747_CM7.svd --patch patches/stm32h747.patch.hocon -o . -m sh.sysl.stm32h747
+```
+
+```hocon
+device = STM32H747_CM7      // optional; a patch for another device is refused
+patches = [
+  {
+    op = modify-field, peripheral = LTDC, register = SSCR, field = HSW
+    set { bitWidth = 12 }
+    why = "RM0399 LTDC_SSCR: HSW[11:0] is bits 27:16; stm32h747xx.h agrees (0x0FFF0000)"
+  }
+  {
+    op = add-field, peripheral = RCC, register = APB3ENR
+    field { name = DSIEN, bitOffset = 4, bitWidth = 1, access = read-write, description = "DSI clock enable" }
+    why = "RM0399 RCC_APB3ENR bit 4"
+  }
+]
+```
+
+Every entry has an `op` and a **`why`**, which is required: a correction says what it was checked
+against. The operations follow the set the Rust embedded ecosystem's svdtools settled on:
+
+| `op` | takes |
+|---|---|
+| `add-peripheral` | `peripheral { name, baseAddress, description?, derivedFrom? }` |
+| `modify-peripheral` | `peripheral`, `set { name?, baseAddress?, description? }` — a rename carries every `derivedFrom` with it |
+| `delete-peripheral` | `peripheral` |
+| `add-register` | `peripheral`, `register { name, addressOffset, description?, size?, access?, resetValue?, alternateOf?, fields = [...] }` |
+| `modify-register` | `peripheral`, `register`, `set { name?, addressOffset?, description?, size?, access?, resetValue? }` |
+| `delete-register` | `peripheral`, `register` |
+| `add-field` | `peripheral`, `register`, `field { name, bitOffset, bitWidth, description?, access? }` |
+| `modify-field` | `peripheral`, `register`, `field`, `set { name?, bitOffset?, bitWidth?, description?, access? }` |
+| `delete-field` | `peripheral`, `register`, `field` |
+| `copy-registers` | `peripheral`, `registers = [...]`, `offset`, `prefix { from, to }` — each register again `offset` bytes on, renamed by prefix (svdtools' `_derive` of a block: a dual-core chip's second per-core block) |
+| `rename-registers` | `peripheral`, `registers = [...]`, `prefix { from, to }` |
+
+A number is a HOCON number or a string in SVD's own syntax, which is how hex is written:
+`addressOffset = "0xC0"`. Entries apply in order. A register-level change to a derived peripheral is
+refused and pointed at its parent, which it then follows.
+
+**A patch that does not apply stops the run.** An entry naming something the SVD does not have, one
+that changes nothing, a key an operation does not take (a misspelt `bitwidth`), a field that would
+overlap another or run off its register, a register landing on an offset another holds — each is an
+error naming the file and the entry. A stale patch is almost always one written against a different
+SVD, or one the vendor has since fixed, and it must not rot in silence.
+
+Every module a patch changed says so in its header, naming the file, its SHA-256, and each `why` that
+applied to it; a derived peripheral written out in full carries its parent's. Modules the patch did not
+touch are byte-identical to an unpatched run.
 
 ## Derived peripherals
 

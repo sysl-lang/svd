@@ -22,7 +22,8 @@ object Main:
       derived: String = "expand",
       include: Seq[String] = Seq.empty,
       exclude: Seq[String] = Seq.empty,
-      dryRun: Boolean = false
+      dryRun: Boolean = false,
+      patch: Option[File] = None
   )
 
   private val builder = OParser.builder[Config]
@@ -31,7 +32,7 @@ object Main:
     import builder.*
     OParser.sequence(
       programName("svd"),
-      head("svd", "0.1.0", "— turns a CMSIS SVD description of a chip into sysl"),
+      head("svd", "0.2.0", "— turns a CMSIS SVD description of a chip into sysl"),
       cmd("constants")
         .action((_, c) => c.copy(command = "constants"))
         .text("emit one sysl module of constants per peripheral")
@@ -60,6 +61,9 @@ object Main:
           opt[Seq[String]]("exclude")
             .action((s, c) => c.copy(exclude = s))
             .text("emit everything but these peripherals, by SVD name"),
+          opt[File]("patch")
+            .action((f, c) => c.copy(patch = Some(f)))
+            .text("a HOCON file of corrections to apply to the SVD before emitting; every entry must apply"),
           opt[Unit]("dry-run")
             .action((_, c) => c.copy(dryRun = true))
             .text("report what would be written, and write nothing")
@@ -79,7 +83,9 @@ object Main:
           val device = Parser.parse(config.input)
           config.command match
             case "survey"    => survey(device)
-            case "constants" => constants(device, config)
+            case "constants" =>
+              val applied = config.patch.map(f => Patch.applyTo(device, Patch.load(f)))
+              constants(applied.fold(device)(_.device), config, applied)
             case other       => throw SvdError(s"no such command as '$other'")
         catch
           case e: SvdError =>
@@ -105,7 +111,7 @@ object Main:
       val f = p.registers.map(_.fields.size).sum
       println(f"  ${p.name}%-18s $r%5d registers  $f%6d fields")
 
-  private def constants(device: Device, config: Config): Unit =
+  private def constants(device: Device, config: Config, applied: Option[Patch.Applied]): Unit =
     val opts = Constants.Options(
       moduleRoot = config.moduleRoot,
       descriptions = config.descriptions match
@@ -115,7 +121,8 @@ object Main:
       absoluteAddresses = config.absolute,
       derived = if config.derived == "base-only" then Constants.Derived.BaseOnly else Constants.Derived.Expand,
       include = config.include.toSet,
-      exclude = config.exclude.toSet
+      exclude = config.exclude.toSet,
+      patched = applied
     )
 
     for name <- (opts.include ++ opts.exclude) if !device.byName.contains(name) do

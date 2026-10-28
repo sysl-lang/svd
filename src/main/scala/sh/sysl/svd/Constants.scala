@@ -21,7 +21,8 @@ object Constants:
       absoluteAddresses: Boolean = false,
       derived: Derived = Derived.Expand,
       include: Set[String] = Set.empty,
-      exclude: Set[String] = Set.empty
+      exclude: Set[String] = Set.empty,
+      patched: Option[Patch.Applied] = scala.None
   )
 
   /** How much of the SVD's prose reaches the generated source.
@@ -89,6 +90,19 @@ object Constants:
     val name = moduleName(peripheral.name)
 
     for d <- peripheral.description do out ++= comment(d)
+    for applied <- opts.patched do
+      // A module the patch changed says so, and says why, so that a reader comparing it with the
+      // vendor's SVD finds the difference explained where they are looking. A derived peripheral
+      // written out in full inherits its parent's corrections, and its parent's reasons.
+      val inherited = peripheral.derivedFrom.filter(_ => opts.derived == Derived.Expand).toSeq.flatMap(applied.whys.getOrElse(_, Seq.empty))
+      val whys      = applied.whys.getOrElse(peripheral.name, Seq.empty) ++ inherited
+      if whys.nonEmpty then
+        if peripheral.description.nonEmpty then out += "//"
+        out += s"// Corrected by ${applied.patch.source}"
+        out += s"// (sha256 ${applied.patch.digest}):"
+        for w <- whys do
+          val lines = comment(s"- $w")
+          out ++= lines.take(1) ++ lines.drop(1).map(l => "//   " + l.drop(3))
     out += ""
     out += s"module ${opts.moduleRoot}.$name"
     out += ""

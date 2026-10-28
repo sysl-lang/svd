@@ -1,0 +1,14 @@
+// Corrections to tiny.svd, as a vendor's patch file would be written.
+device = TINY
+patches = [
+  {
+    op = modify-field, peripheral = UART0, register = CTRL, field = PARITY
+    set { bitWidth = 3 }
+    why = "the datasheet's CTRL table gives PARITY bits 4:2"
+  }
+  {
+    op = add-field, peripheral = UART0, register = DATA
+    field { name = PARITY_ERR, bitOffset = 8, bitWidth = 1, access = read-only }
+    why = "the datasheet's DATA table has PARITY_ERR at bit 8"
+  }
+]

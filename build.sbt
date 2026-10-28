@@ -1,5 +1,5 @@
 ThisBuild / organization := "sh.sysl"
-ThisBuild / version      := "0.1.1"
+ThisBuild / version      := "0.2.0"
 ThisBuild / scalaVersion := "3.8.4"
 
 lazy val svd = (project in file("."))
@@ -16,6 +16,7 @@ lazy val svd = (project in file("."))
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-xml"  % "2.4.0",
       "com.github.scopt"       %% "scopt"      % "4.1.0",
+      "com.typesafe"            % "config"     % "1.4.5",
       "org.scalatest"          %% "scalatest"  % "3.2.19" % Test
     )
   )
