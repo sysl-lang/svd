@@ -76,6 +76,26 @@ class ParserTests extends AnyFreeSpec with Matchers:
       (the[SvdError] thrownBy Parser.parse(xml)).message shouldBe
         "peripheral 'P' derives from 'ABSENT', which this file does not declare"
     }
+    "is refused when it also declares registers of its own, which taking the parent's would drop" in {
+      val xml = <device><name>D</name><peripherals>
+          <peripheral><name>A</name><baseAddress>0</baseAddress>
+            <registers><register><name>R</name><addressOffset>0</addressOffset></register></registers></peripheral>
+          <peripheral derivedFrom="A"><name>B</name><baseAddress>0x100</baseAddress>
+            <registers><register><name>EXTRA</name><addressOffset>4</addressOffset></register></registers></peripheral>
+        </peripherals></device>
+      (the[SvdError] thrownBy Parser.parse(xml)).message shouldBe
+        "peripheral 'B' derives from 'A' and also declares registers of its own, which this tool does not understand — they would be dropped silently, so the run stops instead"
+    }
+  }
+
+  "an alternate register is kept, with the name of the register it is an alternate of" in {
+    val xml = <device><name>D</name><peripherals><peripheral><name>P</name><baseAddress>0</baseAddress>
+        <registers>
+          <register><name>OUT</name><addressOffset>0x18</addressOffset></register>
+          <register><name>IN</name><alternateRegister>OUT</alternateRegister><addressOffset>0x18</addressOffset></register>
+        </registers></peripheral></peripherals></device>
+    val regs = Parser.parse(xml).byName("P").registers
+    regs.map(r => (r.name, r.addressOffset, r.alternateOf)) shouldBe Seq(("OUT", 0x18L, None), ("IN", 0x18L, Some("OUT")))
   }
 
   "prose is folded onto one line, because the file indents it" in {

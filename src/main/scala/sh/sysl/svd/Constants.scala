@@ -107,7 +107,9 @@ object Constants:
       case None =>
         for r <- peripheral.registers do
           out += ""
-          if opts.descriptions != Descriptions.None then for d <- r.description do out ++= comment(d)
+          if opts.descriptions != Descriptions.None then
+            for d <- r.description do out ++= comment(d)
+            for a <- r.alternateOf do out ++= comment(s"The SVD declares this an alternate reading of $a.")
           out += s"const ${r.name}_OFFSET: $ty = ${hex(r.addressOffset, device.width)}"
           if opts.absoluteAddresses then
             out += s"const ${r.name}_ADDR: $ty = ${hex(peripheral.baseAddress + r.addressOffset, device.width)}"

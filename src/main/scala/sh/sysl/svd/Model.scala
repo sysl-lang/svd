@@ -41,6 +41,10 @@ case class Device(
         case None         => p
         case Some(parent) =>
           val from = byName.getOrElse(parent, throw SvdError(s"peripheral '${p.name}' derives from '$parent', which this file does not declare"))
+          // The schema lets a derived peripheral add or override registers of its own. Taking the
+          // parent's list would drop them without a word, so a file that does it is refused instead.
+          if p.registers.nonEmpty then
+            throw SvdError(s"peripheral '${p.name}' derives from '$parent' and also declares registers of its own, which this tool does not understand — they would be dropped silently, so the run stops instead")
           p.copy(registers = from.registers, interrupts = if p.interrupts.isEmpty then from.interrupts else p.interrupts)
 
 /** One peripheral. `registers` is empty on a derived peripheral until `Device.resolved` fills it in.
@@ -54,6 +58,12 @@ case class Peripheral(
     interrupts: Seq[Interrupt]
 )
 
+/** One register. `alternateOf` is SVD's `<alternateRegister>`: the name of another register in the
+  * same peripheral that this one is a second reading of — a timer's `CCMR1_Input` beside
+  * `CCMR1_Output`, the same word laid out for capture or for compare. Each is a register in its own
+  * right, with its own name, offset and fields, so both are kept; the link is only a note for a
+  * reader.
+  */
 case class Register(
     name: String,
     description: Option[String],
@@ -61,7 +71,8 @@ case class Register(
     size: Option[Int],
     access: Option[Access],
     resetValue: Option[Long],
-    fields: Seq[Field]
+    fields: Seq[Field],
+    alternateOf: Option[String] = None
 )
 
 /** A run of bits inside a register. Held as offset and width whatever spelling the file used — SVD

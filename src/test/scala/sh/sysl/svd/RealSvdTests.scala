@@ -78,8 +78,8 @@ class RealSvdTests extends AnyFreeSpec with Matchers:
       val root = Files.createTempDirectory("svd-test")
       try {
         write(root, Constants.emit(device, Constants.Options(include = Set("TIMER0"))))
-        val out = Path.of(root.toString, "std.syslib")
-        Seq("sysl", "build-lib", root.toString, "-o", out.toString).! shouldBe 0
+        // build-lib checks a library and writes nothing a caller names, so its exit status is the result.
+        Seq("sysl", "build-lib", root.toString).! shouldBe 0
       } finally delete(root)
     }
 
@@ -100,7 +100,8 @@ class RealSvdTests extends AnyFreeSpec with Matchers:
             |print(timer0.BASE + timer0.ALARM0_OFFSET)
             |""".stripMargin
         )
-        val output = Seq("sysl", "run", "--lib", root.toString, program.toString).!!.trim
+        // Named as a file, so it runs without a manifest of its own.
+        val output = Seq("sysl", "run", "--lib", root.toString, Path.of(program.toString, "main.sysl").toString).!!.trim
         // 0xff00 is not shifted, and TIMER0 sits at 0x400b0000 with ALARM0 sixteen bytes in.
         output.linesIterator.toSeq shouldBe Seq("65280", (0x400b0000L + 0x10).toString)
       } finally { delete(root); delete(program) }

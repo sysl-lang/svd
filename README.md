@@ -76,6 +76,14 @@ understand — it would be dropped silently, so the run stops instead
 
 Adding support for one of them is a small job. Discovering you needed it is not.
 
+A derived peripheral that also declares registers of its own is refused for the same reason: taking
+its parent's registers would drop them.
+
+**An alternate register is not refused**, because noting it loses nothing. ST's timers declare
+`CCMR1_Output` and `CCMR1_Input` at one offset, the input reading of the word naming the output one
+with `<alternateRegister>`. Each is a complete register, so both are emitted with their own fields, and
+the one naming the other carries a comment saying so.
+
 ## Derived peripherals
 
 An SVD says "UART1 is a UART0 somewhere else" with `derivedFrom`, and their registers are identical by

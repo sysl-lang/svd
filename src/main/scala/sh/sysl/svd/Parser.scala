@@ -61,7 +61,6 @@ object Parser:
     val unsupported = Seq(
       "dim"               -> "a register or field array",
       "cluster"           -> "a register cluster",
-      "alternateRegister" -> "an alternate register",
       "alternateGroup"    -> "an alternate register group",
       "alternatePeripheral" -> "an alternate peripheral",
       "writeConstraint"   -> "a write constraint",
@@ -115,7 +114,10 @@ object Parser:
       size          = n.childNum("size").map(_.toInt),
       access        = n.childText("access").flatMap(Access.parse),
       resetValue    = n.childNum("resetValue"),
-      fields        = (n \ "fields" \ "field").map(field(_, name))
+      fields        = (n \ "fields" \ "field").map(field(_, name)),
+      // Unlike the elements refused above, this one takes nothing away when it is merely noted: the
+      // register carrying it is complete, and is emitted like any other.
+      alternateOf   = n.childText("alternateRegister")
     )
 
   private def peripheral(n: Node): Peripheral =

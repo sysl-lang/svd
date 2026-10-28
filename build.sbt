@@ -1,5 +1,5 @@
 ThisBuild / organization := "sh.sysl"
-ThisBuild / version      := "0.1.0"
+ThisBuild / version      := "0.1.1"
 ThisBuild / scalaVersion := "3.8.4"
 
 lazy val svd = (project in file("."))

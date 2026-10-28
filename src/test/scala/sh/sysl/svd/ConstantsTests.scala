@@ -121,6 +121,38 @@ class ConstantsTests extends AnyFreeSpec with Matchers:
     text should not include "odd_parity"
   }
 
+  "an alternate register" - {
+    // ST's timers declare CCMR1 twice -- once laid out for input capture, once for output compare --
+    // at one offset, the second naming the first with <alternateRegister>. Both are real views of
+    // the word, and a driver wants the field names of whichever mode it is in.
+    val xml = <device><name>D</name><peripherals><peripheral><name>TIM</name><baseAddress>0x40010000</baseAddress>
+        <registers>
+          <register><name>CCMR1_Output</name><description>compare mode</description><addressOffset>0x18</addressOffset>
+            <fields><field><name>OC1M</name><bitOffset>4</bitOffset><bitWidth>3</bitWidth></field></fields></register>
+          <register><name>CCMR1_Input</name><description>capture mode</description><alternateRegister>CCMR1_Output</alternateRegister>
+            <addressOffset>0x18</addressOffset>
+            <fields><field><name>IC1F</name><bitOffset>4</bitOffset><bitWidth>4</bitWidth></field></fields></register>
+        </registers></peripheral></peripherals></device>
+    val device = Parser.parse(xml)
+
+    "emits both registers, each with its own fields, at the shared offset" in {
+      val text = Constants.module(device, device.byName("TIM"), opts)
+      text should include("const CCMR1_Output_OFFSET: u32 = 0x00000018")
+      text should include("const CCMR1_Output_OC1M_MASK: u32 = 0x00000070")
+      text should include("const CCMR1_Input_OFFSET: u32 = 0x00000018")
+      text should include("const CCMR1_Input_IC1F_MASK: u32 = 0x000000f0")
+    }
+    "says which register it is an alternate of" in {
+      val text = Constants.module(device, device.byName("TIM"), opts)
+      text should include("// capture mode\n// The SVD declares this an alternate reading of CCMR1_Output.\nconst CCMR1_Input_OFFSET")
+    }
+    "keeps both registers and drops the note when descriptions are off" in {
+      val text = Constants.module(device, device.byName("TIM"), opts.copy(descriptions = Constants.Descriptions.None))
+      text should include("const CCMR1_Input_IC1F_SHIFT: u32 = 4")
+      text should not include "alternate reading"
+    }
+  }
+
   "the integer type comes from the device's own register width" in {
     Constants.module(tiny, tiny.byName("WIDE"), opts) should include("const BASE: u32")
     val wide = tiny.copy(width = 64)
